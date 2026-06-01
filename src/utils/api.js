@@ -93,12 +93,12 @@ export const getRecipesByIngredients = async (ingredients) => {
  * Fetches 3 dynamic, totally fresh suggested specials directly from Spoonacular on mount.
  * Dynamically appends "/random" to your base URL!
  */
-export const fetchSpoonacularSuggestions = async () => {
+export const fetchSpoonacularSuggestions = async (count = 3) => {
   try {
     const randomUrl = `${SPOONACULAR_BASE}/random`;
     const response = await axios.get(randomUrl, {
       params: {
-        number: 3,
+        number: count,
         apiKey: API_KEY,
       },
     });
