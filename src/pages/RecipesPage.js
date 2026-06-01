@@ -6,10 +6,10 @@ import confetti from "canvas-confetti";
 import ThreeDCard from "../components/ThreeDCard";
 import CookingMode from "../components/CookingMode";
 import Toast, { ToastContainer } from "../components/Toast";
-import { generateRecipe, analyzeFridgeImage } from "../utils/api";
+import { generateRecipe, analyzeFridgeImage, fetchSpoonacularSuggestions } from "../utils/api";
 import "../styles/RecipesPage.css";
 
-// Pool of 8 premium Gourmet Chef Recommendations that rotate
+// Pool of 8 premium Gourmet Chef Recommendations that serve as fallbacks
 const GOURMET_POOL = [
   {
     title: "Pan-Seared Salmon with Rosemary Lemon Butter",
@@ -235,17 +235,24 @@ function RecipesPage() {
     const saved = JSON.parse(localStorage.getItem("savedRecipes")) || [];
     setSavedRecipes(saved);
 
-    // Math-stables uniform shuffling (Fisher-Yates Shuffle Algorithm)
-    const shuffleSpecs = () => {
-      const poolCopy = [...GOURMET_POOL];
-      for (let i = poolCopy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
+    const loadSuggestions = async () => {
+      // 1. Try to fetch live suggestions from Spoonacular API
+      const liveSuggestions = await fetchSpoonacularSuggestions();
+      
+      if (liveSuggestions && liveSuggestions.length > 0) {
+        setSuggestedRecipes(liveSuggestions);
+      } else {
+        // 2. Mathematically uniform shuffling (Fisher-Yates Shuffle Algorithm) fallback
+        const poolCopy = [...GOURMET_POOL];
+        for (let i = poolCopy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
+        }
+        setSuggestedRecipes(poolCopy.slice(0, 3));
       }
-      return poolCopy.slice(0, 3);
     };
 
-    setSuggestedRecipes(shuffleSpecs());
+    loadSuggestions();
   }, []);
 
   // Toast Helper

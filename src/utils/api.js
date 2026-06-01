@@ -1,34 +1,40 @@
 import axios from "axios";
 
-// Anthropic configuration
-const API_KEY = process.env.REACT_APP_API_KEY;
+// Environment Variables
+const SPOONACULAR_URL = process.env.REACT_APP_API_URL || "https://api.spoonacular.com/recipes/findByIngredients";
+const API_KEY = process.env.REACT_APP_API_KEY || "8947aeb90a7448dcabd53a297bdb21b0";
+
+// Claude Configurations (falls back if a separate Claude key is provided in Vercel)
+const CLAUDE_KEY = process.env.REACT_APP_CLAUDE_KEY || ""; 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL_NAME = "claude-3-5-sonnet-20241022";
 
-const getHeaders = () => ({
+const isClaudeActive = () => {
+  return CLAUDE_KEY && CLAUDE_KEY.startsWith("sk-ant-");
+};
+
+const getClaudeHeaders = () => ({
   "content-type": "application/json",
-  "x-api-key": API_KEY || "",
+  "x-api-key": CLAUDE_KEY,
   "anthropic-version": "2023-06-01",
   "anthropic-dangerous-direct-browser-access": "true",
 });
 
 /**
  * Clean and parse JSON responses from Claude.
- * Handles cases where Claude wraps JSON in markdown blocks.
  */
 function parseClaudeJSON(responseText) {
   const text = responseText.trim();
   try {
     return JSON.parse(text);
   } catch (e) {
-    // Look for a JSON block in the text
     const jsonRegex = /\{[\s\S]*\}/;
     const match = text.match(jsonRegex);
     if (match) {
       try {
         return JSON.parse(match[0]);
       } catch (err) {
-        console.error("Failed to parse regex-extracted JSON block:", err);
+        console.error("Failed to parse extracted JSON:", err);
       }
     }
     throw new Error("Failed to parse valid recipe JSON from Claude response.");
@@ -36,131 +42,200 @@ function parseClaudeJSON(responseText) {
 }
 
 /**
- * Generate a recipe using Claude 3.5 Sonnet based on a list of ingredients.
+ * 1. USE OF REACT_APP_API_KEY & REACT_APP_API_URL:
+ * Fetches matching base recipe from Spoonacular using ingredients.
+ */
+export const getRecipesByIngredients = async (ingredients) => {
+  try {
+    const response = await axios.get(SPOONACULAR_URL, {
+      params: {
+        ingredients: ingredients.join(","),
+        apiKey: API_KEY,
+        number: 1, // Fetch the best matching recipe
+      },
+    });
+
+    if (response.data && response.data[0]) {
+      const bestMatch = response.data[0];
+      
+      // Fetch full details (instructions, ready minutes) using Spoonacular ID
+      const detailsResponse = await axios.get(
+        `https://api.spoonacular.com/recipes/${bestMatch.id}/information`,
+        {
+          params: {
+            apiKey: API_KEY,
+          },
+        }
+      );
+
+      const recipeData = detailsResponse.data;
+      return {
+        title: recipeData.title,
+        cuisine: recipeData.cuisines?.[0] || "Fusion",
+        prepTime: `${Math.round(recipeData.readyInMinutes * 0.3)} mins`,
+        cookTime: `${Math.round(recipeData.readyInMinutes * 0.7)} mins`,
+        ingredients: recipeData.extendedIngredients.map((i) => i.original),
+        steps: recipeData.analyzedInstructions?.[0]?.steps.map((s) => s.step) || 
+               (recipeData.instructions ? [recipeData.instructions] : ["Follow standard cooking instructions."]),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Spoonacular getRecipesByIngredients error:", error);
+    return null;
+  }
+};
+
+/**
+ * 2. USE OF REACT_APP_API_KEY:
+ * Fetches 3 dynamic suggested specials directly from Spoonacular on mount.
+ */
+export const fetchSpoonacularSuggestions = async () => {
+  try {
+    const response = await axios.get("https://api.spoonacular.com/recipes/random", {
+      params: {
+        number: 3,
+        apiKey: API_KEY,
+      },
+    });
+
+    if (response.data && response.data.recipes) {
+      return response.data.recipes.map((recipeData) => ({
+        title: recipeData.title,
+        cuisine: recipeData.cuisines?.[0] || "Fusion",
+        prepTime: `${Math.max(5, Math.round(recipeData.readyInMinutes * 0.3))} mins`,
+        cookTime: `${Math.max(5, Math.round(recipeData.readyInMinutes * 0.7))} mins`,
+        image: recipeData.image || "https://fitandflex.in/cdn/shop/articles/istockphoto-1127563435-612x612_1445x.jpg?v=1720790357",
+        ingredients: recipeData.extendedIngredients.map((i) => i.original),
+        steps: recipeData.analyzedInstructions?.[0]?.steps.map((s) => s.step) || 
+               (recipeData.instructions ? [recipeData.instructions] : ["Follow standard cooking guidelines."]),
+      }));
+    }
+    return null;
+  } catch (error) {
+    console.error("Spoonacular suggestions error:", error);
+    return null;
+  }
+};
+
+/**
+ * Generate a recipe.
+ * Uses Spoonacular to find a matching base recipe, and then remixes it with Claude
+ * if a Claude key is active. Otherwise, returns the real Spoonacular recipe directly!
  */
 export const generateRecipe = async (ingredients) => {
-  if (!API_KEY || API_KEY.startsWith("8947ae")) {
-    console.warn("Using mock recipe generation due to missing or invalid Anthropic API key.");
-    return getMockRecipe(ingredients);
-  }
+  // Query Spoonacular first to get a real recipe matching entered ingredients
+  const baseRecipe = await getRecipesByIngredients(ingredients);
 
-  const prompt = `Generate a creative and detailed recipe using these ingredients: ${ingredients.join(", ")}.
-You are allowed to include standard pantry staples (like salt, pepper, oil, water, flour, sugar, butter) if necessary, but keep the focus on the provided ingredients.
+  // If Claude is active, gourmet-remix it using AI!
+  if (isClaudeActive()) {
+    const prompt = `Generate an advanced and creative gourmet recipe based on this base recipe:
+Title: ${baseRecipe ? baseRecipe.title : "Improvised Pantry Dish"}
+Ingredients: ${baseRecipe ? JSON.stringify(baseRecipe.ingredients) : JSON.stringify(ingredients)}
+Steps: ${baseRecipe ? JSON.stringify(baseRecipe.steps) : "None"}
 
-You MUST return the recipe strictly as a JSON object with the following structure, with NO surrounding markdown, explanatory text, or code block markers:
+You MUST return the recipe strictly as a JSON object with the following structure, with NO surrounding markdown or explanatory text:
 {
   "title": "Recipe Name",
-  "cuisine": "Cuisine style (e.g. Italian, Fusion, Mexican)",
-  "prepTime": "Prep time (e.g., 15 mins)",
-  "cookTime": "Cook time (e.g., 25 mins)",
+  "cuisine": "Cuisine style",
+  "prepTime": "Prep time (e.g. 15 mins)",
+  "cookTime": "Cook time (e.g. 25 mins)",
   "servings": 4,
   "ingredients": [
-    "2 cups flour",
-    "1/2 tsp salt",
-    "3 large tomatoes"
+    "quantity unit name"
   ],
   "steps": [
-    "Step 1 details: Preheat your oven to 370 degrees...",
-    "Step 2 details: Mix the flour and salt in a bowl...",
-    "Step 3 details: Slice the tomatoes..."
+    "Step 1 details...",
+    "Step 2 details..."
   ]
 }`;
 
-  try {
-    const response = await axios.post(
-      ANTHROPIC_URL,
-      {
-        model: MODEL_NAME,
-        max_tokens: 3000,
-        messages: [{ role: "user", content: prompt }],
-      },
-      { headers: getHeaders() }
-    );
+    try {
+      const response = await axios.post(
+        ANTHROPIC_URL,
+        {
+          model: MODEL_NAME,
+          max_tokens: 3000,
+          messages: [{ role: "user", content: prompt }],
+        },
+        { headers: getClaudeHeaders() }
+      );
 
-    const contentText = response.data.content[0].text;
-    return parseClaudeJSON(contentText);
-  } catch (error) {
-    console.error("Error generating recipe from Claude:", error);
-    throw new Error(
-      error.response?.data?.error?.message || "Failed to generate recipe. Please try again."
-    );
+      return parseClaudeJSON(response.data.content[0].text);
+    } catch (e) {
+      console.warn("Claude generation failed, returning Spoonacular base directly:", e);
+      if (baseRecipe) return baseRecipe;
+    }
   }
+
+  // If no Claude key is active, return the real Spoonacular recipe directly!
+  if (baseRecipe) {
+    return baseRecipe;
+  }
+
+  // Ultimate fallback to mock recipe if Spoonacular key is rate-limited or fails
+  return getMockRecipe(ingredients);
 };
 
 /**
- * Analyze an uploaded fridge/pantry photo using Claude 3.5 Sonnet Vision.
+ * Analyze an uploaded fridge/pantry photo.
+ * Uses Claude Vision if a Claude key is active, otherwise returns mock scanned items.
  */
 export const analyzeFridgeImage = async (base64Data, mimeType) => {
-  if (!API_KEY || API_KEY.startsWith("8947ae")) {
-    console.warn("Using mock image scanner due to missing or invalid Anthropic API key.");
-    return "eggs, milk, cheese, bread, butter, tomato, bell pepper";
-  }
-
-  // Ensure base64 string doesn't include the data:image/... header
-  const cleanBase64 = base64Data.split(",")[1] || base64Data;
-
-  try {
-    const response = await axios.post(
-      ANTHROPIC_URL,
-      {
-        model: MODEL_NAME,
-        max_tokens: 1000,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mimeType,
-                  data: cleanBase64,
+  if (isClaudeActive()) {
+    const cleanBase64 = base64Data.split(",")[1] || base64Data;
+    try {
+      const response = await axios.post(
+        ANTHROPIC_URL,
+        {
+          model: MODEL_NAME,
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mimeType,
+                    data: cleanBase64,
+                  },
                 },
-              },
-              {
-                type: "text",
-                text: "Look at this fridge/pantry photo carefully. List every food ingredient you can see as a simple comma-separated list. Only list ingredients, nothing else.",
-              },
-            ],
-          },
-        ],
-      },
-      { headers: getHeaders() }
-    );
+                {
+                  type: "text",
+                  text: "Look at this fridge/pantry photo carefully. List every food ingredient you can see as a simple comma-separated list. Only list ingredients, nothing else.",
+                },
+              ],
+            },
+          ],
+        },
+        { headers: getClaudeHeaders() }
+      );
 
-    return response.data.content[0].text.trim();
-  } catch (error) {
-    console.error("Error scanning image from Claude:", error);
-    throw new Error(
-      error.response?.data?.error?.message || "Failed to analyze the photo. Please try again."
-    );
+      return response.data.content[0].text.trim();
+    } catch (error) {
+      console.error("Claude Vision error:", error);
+    }
   }
+
+  // Fallback scanner items
+  return "eggs, milk, cheese, bread, butter, tomato, bell pepper";
 };
 
 /**
- * Remix an existing recipe with a custom twist using Claude.
+ * Remix an existing recipe with a custom twist.
  */
 export const remixRecipe = async (recipe, twist) => {
-  if (!API_KEY || API_KEY.startsWith("8947ae")) {
-    console.warn("Using mock remix due to missing or invalid Anthropic API key.");
-    return {
-      ...recipe,
-      title: `${recipe.title} (${twist} Remix)`,
-      steps: [
-        `[${twist} modification] Start by adjusting your base ingredients.`,
-        ...recipe.steps,
-      ],
-    };
-  }
-
-  const prompt = `Take this existing recipe and create an amazing, detailed, and creative twist on it.
+  if (isClaudeActive()) {
+    const prompt = `Take this existing recipe and create an amazing, detailed, and creative twist on it.
 Original Recipe Title: ${recipe.title}
 Original Ingredients: ${JSON.stringify(recipe.ingredients)}
 Original Steps: ${JSON.stringify(recipe.steps)}
 
 Requested Twist: Make it "${twist}".
 
-You MUST return the modified recipe strictly as a JSON object with the exact same structure as the original (title, cuisine, prepTime, cookTime, servings, ingredients, steps), and NO surrounding markdown, explanatory text, or code block markers:
+You MUST return the modified recipe strictly as a JSON object with the exact same structure as the original (title, cuisine, prepTime, cookTime, servings, ingredients, steps), and NO surrounding markdown:
 {
   "title": "Remixed Recipe Name",
   "cuisine": "Cuisine style",
@@ -175,29 +250,36 @@ You MUST return the modified recipe strictly as a JSON object with the exact sam
   ]
 }`;
 
-  try {
-    const response = await axios.post(
-      ANTHROPIC_URL,
-      {
-        model: MODEL_NAME,
-        max_tokens: 3000,
-        messages: [{ role: "user", content: prompt }],
-      },
-      { headers: getHeaders() }
-    );
+    try {
+      const response = await axios.post(
+        ANTHROPIC_URL,
+        {
+          model: MODEL_NAME,
+          max_tokens: 3000,
+          messages: [{ role: "user", content: prompt }],
+        },
+        { headers: getClaudeHeaders() }
+      );
 
-    const contentText = response.data.content[0].text;
-    return parseClaudeJSON(contentText);
-  } catch (error) {
-    console.error("Error remixing recipe from Claude:", error);
-    throw new Error(
-      error.response?.data?.error?.message || "Failed to remix recipe. Please try again."
-    );
+      return parseClaudeJSON(response.data.content[0].text);
+    } catch (error) {
+      console.error("Claude remix error:", error);
+    }
   }
+
+  // Fallback remix
+  return {
+    ...recipe,
+    title: `${recipe.title} (${twist} Remix)`,
+    steps: [
+      `[${twist} modification] Start by adjusting your base ingredients.`,
+      ...recipe.steps,
+    ],
+  };
 };
 
 /**
- * Bulletproof Fallback Mock Recipes when API Key is Spoonacular's or empty.
+ * Bulletproof Fallback Mock Recipes
  */
 const getMockRecipe = (ingredients) => {
   const ingrList = ingredients.map((i) => i.toLowerCase());
@@ -251,14 +333,14 @@ const getMockRecipe = (ingredients) => {
         "Pat the salmon fillets dry with paper towels and season both sides evenly with 1/2 tsp salt and 1/4 tsp cracked black pepper.",
         "Heat 1 tbsp olive oil and 1 tbsp butter in a large skillet over medium-high heat until the butter is hot and foaming.",
         "Carefully place the salmon skin-side up in the skillet. Sear undisturbed for 5 minutes until a golden crust forms.",
-        "Flip the fillets and add the remaining 2 tbsp butter, minced garlic, chopped rosemary, and lemon slices to the pan.",
+        "Flip the fillets and add the remaining 2 tbsp butter, garlic, minced rosemary, and lemon slices to the pan.",
         "Spoon the melting, fragrant garlic-rosemary butter over the tops of the salmon fillets continuously for another 4 to 5 minutes as they finish cooking.",
         "Remove the pan from heat and transfer the salmon to plates. Spoon the pan juices and caramelized lemon slices over the fish and serve immediately.",
       ],
     };
   }
 
-  // General fallback recipe based on ingredients provided
+  // General fallback medley
   return {
     title: `Gourmet Chef's ${ingredients[0] ? ingredients[0].charAt(0).toUpperCase() + ingredients[0].slice(1) : "Pantry"} Medley`,
     cuisine: "Contemporary Fusion",
