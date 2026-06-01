@@ -6,7 +6,7 @@ import confetti from "canvas-confetti";
 import ThreeDCard from "../components/ThreeDCard";
 import CookingMode from "../components/CookingMode";
 import Toast, { ToastContainer } from "../components/Toast";
-import { generateRecipe, analyzeFridgeImage, fetchSpoonacularSuggestions } from "../utils/api";
+import { generateRecipe, analyzeFridgeImage, fetchSpoonacularSuggestions, remixRecipe } from "../utils/api";
 import "../styles/RecipesPage.css";
 
 // Pool of 8 premium Gourmet Chef Recommendations that serve as fallbacks
@@ -248,6 +248,11 @@ function RecipesPage() {
   // Camera integration states
   const [isCameraActive, setIsCameraActive] = useState(false);
 
+  // Remix integration states
+  const [isRemixModalOpen, setIsRemixModalOpen] = useState(false);
+  const [remixTwist, setRemixTwist] = useState("");
+  const [remixLoading, setRemixLoading] = useState(false);
+
   const fileInputRef = useRef(null);
   const recipeOutputRef = useRef(null);
   const videoRef = useRef(null);
@@ -266,13 +271,19 @@ function RecipesPage() {
         setRecipe(parsed);
         setCurrentServings(4);
         
-        // Premium celebration confetti burst
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.65 },
-          colors: ["#F4A319", "#C1440E", "#3B6B35", "#FFFFFF"],
-        });
+        const triggerRemix = localStorage.getItem("triggerRemixOnLoad") === "true";
+        if (triggerRemix) {
+          setIsRemixModalOpen(true);
+          localStorage.removeItem("triggerRemixOnLoad");
+        } else {
+          // Premium celebration confetti burst (only if not doing immediate remix)
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.65 },
+            colors: ["#F4A319", "#C1440E", "#3B6B35", "#FFFFFF"],
+          });
+        }
 
         // Smoothly scroll the generated card into view after rendering
         setTimeout(() => {
@@ -367,6 +378,45 @@ function RecipesPage() {
     } catch (err) {
       console.error("Failed to capture snapshot:", err);
       addToast("Failed to capture snapshot", "error");
+    }
+  };
+
+  const handleRemixRecipe = async (e) => {
+    if (e) e.preventDefault();
+    if (!recipe || !remixTwist.trim()) return;
+
+    setRemixLoading(true);
+    addToast("Chef is remixing your recipe with a twist...", "info");
+    try {
+      const remixed = await remixRecipe(recipe, remixTwist.trim());
+      if (remixed) {
+        setRecipe(remixed);
+        setCurrentServings(4);
+        setIsRemixModalOpen(false);
+        setRemixTwist("");
+        
+        confetti({
+          particleCount: 140,
+          spread: 80,
+          origin: { y: 0.65 },
+          colors: ["#F4A319", "#C1440E", "#3B6B35", "#FFFFFF"],
+        });
+
+        addToast(`Successfully remixed: ${remixed.title}!`, "success");
+        
+        setTimeout(() => {
+          if (recipeOutputRef.current) {
+            recipeOutputRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 300);
+      } else {
+        addToast("Failed to remix recipe.", "error");
+      }
+    } catch (err) {
+      console.error("Remix failed:", err);
+      addToast("Error remixing recipe.", "error");
+    } finally {
+      setRemixLoading(false);
     }
   };
 
@@ -1048,27 +1098,57 @@ function RecipesPage() {
                 </div>
 
                  {/* Active Recipe Action Controls */}
-                <div style={{ display: "flex", gap: "12px", marginTop: "var(--spacing-lg)", flexWrap: "wrap" }}>
-                  <button className="btn-start-cooking" onClick={() => setCookingModeOpen(true)} style={{ flex: 1, minWidth: "200px", margin: 0 }}>
-                    👨‍🍳 Start Hands-Free Cooking Mode
+                <div style={{ display: "flex", gap: "10px", marginTop: "var(--spacing-lg)", flexWrap: "wrap" }}>
+                  <button className="btn-start-cooking" onClick={() => setCookingModeOpen(true)} style={{ flex: 1, minWidth: "150px", margin: 0, padding: "14px 16px", fontSize: "0.95rem" }}>
+                    👨‍🍳 Start Cooking
+                  </button>
+                  <button 
+                    onClick={() => setIsRemixModalOpen(true)}
+                    style={{
+                      flex: 1,
+                      minWidth: "150px",
+                      backgroundColor: "rgba(244, 163, 25, 0.12)",
+                      border: "1px solid var(--accent-saffron)",
+                      color: "var(--text-primary)",
+                      padding: "14px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "700",
+                      fontSize: "0.95rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      transition: "var(--transition-smooth)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = "var(--accent-saffron)";
+                      e.target.style.color = "#FFFFFF";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = "rgba(244, 163, 25, 0.12)";
+                      e.target.style.color = "var(--text-primary)";
+                    }}
+                  >
+                    🪄 Add AI Twist
                   </button>
                   <button 
                     onClick={toggleBookmark}
                     style={{
                       flex: 1,
-                      minWidth: "200px",
+                      minWidth: "150px",
                       backgroundColor: isCurrentRecipeBookmarked ? "rgba(193, 68, 14, 0.12)" : "var(--accent-saffron)",
                       color: isCurrentRecipeBookmarked ? "var(--accent-terracotta)" : "#FFFFFF",
                       border: isCurrentRecipeBookmarked ? "1px solid var(--accent-terracotta)" : "none",
-                      padding: "14px 24px",
+                      padding: "14px 16px",
                       borderRadius: "8px",
                       fontWeight: "700",
-                      fontSize: "1rem",
+                      fontSize: "0.95rem",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "8px",
+                      gap: "6px",
                       transition: "var(--transition-smooth)",
                     }}
                     onMouseEnter={(e) => {
@@ -1088,7 +1168,7 @@ function RecipesPage() {
                       }
                     }}
                   >
-                    {isCurrentRecipeBookmarked ? "❤️ Saved in Cookbook" : "📖 Save to Cookbook"}
+                    {isCurrentRecipeBookmarked ? "❤️ Saved" : "📖 Save Recipe"}
                   </button>
                 </div>
               </div>
@@ -1147,9 +1227,51 @@ function RecipesPage() {
                   <h4 style={{ fontSize: "1.05rem", margin: 0, fontWeight: "600", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {recipeConcept.title}
                   </h4>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
-                    ⏱️ Prep: {recipeConcept.prepTime} | Cook: {recipeConcept.cookTime}
-                  </p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
+                      ⏱️ Prep: {recipeConcept.prepTime}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Open this recipe and trigger the remix modal immediately
+                        setRecipe(recipeConcept);
+                        setCurrentServings(4);
+                        setIsRemixModalOpen(true);
+                        // Scroll to active recipe output
+                        setTimeout(() => {
+                          if (recipeOutputRef.current) {
+                            recipeOutputRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }, 250);
+                      }}
+                      style={{
+                        background: "rgba(244, 163, 25, 0.12)",
+                        border: "1px solid var(--accent-saffron)",
+                        color: "var(--text-primary)",
+                        padding: "4px 10px",
+                        borderRadius: "12px",
+                        fontSize: "0.75rem",
+                        fontWeight: "700",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "var(--transition-fast)",
+                        zIndex: 10
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = "var(--accent-saffron)";
+                        e.target.style.color = "#FFFFFF";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = "rgba(244, 163, 25, 0.12)";
+                        e.target.style.color = "var(--text-primary)";
+                      }}
+                    >
+                      🪄 Remix
+                    </button>
+                  </div>
                 </div>
               </div>
             </ThreeDCard>
@@ -1194,6 +1316,103 @@ function RecipesPage() {
           </button>
         </div>
       </div>
+
+      {/* 3D Glassmorphic AI Twist Remix Modal */}
+      {isRemixModalOpen && recipe && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(26, 20, 16, 0.65)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999,
+          padding: "var(--spacing-md)"
+        }}>
+          <div style={{
+            background: "var(--glass-bg)",
+            backdropFilter: "var(--glass-blur)",
+            border: "1.5px solid var(--glass-border)",
+            borderRadius: "var(--border-radius-md)",
+            padding: "var(--spacing-lg)",
+            maxWidth: "480px",
+            width: "100%",
+            boxShadow: "var(--shadow-3)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--spacing-md)",
+            textAlign: "left"
+          }}>
+            <h3 style={{ fontSize: "1.35rem", margin: 0, fontWeight: "700", color: "var(--text-primary)" }}>
+              🪄 Add AI Gourmet Twist
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
+              Specify how you want to remix <strong>{recipe.title}</strong> (e.g., <em>"make it gluten-free"</em>, <em>"add chili flakes"</em>, <em>"convert to high-protein"</em>). Our AI chef will recreate it!
+            </p>
+
+            <form onSubmit={handleRemixRecipe} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <input
+                type="text"
+                maxLength={80}
+                required
+                disabled={remixLoading}
+                placeholder="Describe your twist (e.g. Extra spicy, Vegan)"
+                value={remixTwist}
+                onChange={(e) => setRemixTwist(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: "var(--border-radius-sm)",
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-primary)",
+                  color: "var(--text-primary)",
+                  fontSize: "1rem",
+                  outline: "none"
+                }}
+              />
+              <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                <button
+                  type="button"
+                  disabled={remixLoading}
+                  onClick={() => {
+                    setIsRemixModalOpen(false);
+                    setRemixTwist("");
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-color)",
+                    padding: "10px 16px",
+                    borderRadius: "var(--border-radius-sm)",
+                    fontWeight: "600",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={remixLoading || !remixTwist.trim()}
+                  style={{
+                    flex: 2,
+                    backgroundColor: "var(--accent-saffron)",
+                    color: "#FFFFFF",
+                    border: "none",
+                    padding: "10px 16px",
+                    borderRadius: "var(--border-radius-sm)",
+                    fontWeight: "700",
+                    cursor: "pointer"
+                  }}
+                >
+                  {remixLoading ? "⏳ Remixing Recipe..." : "🪄 Twist Recipe"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Cooking Mode Fullscreen Overlay */}
       {cookingModeOpen && recipe && (

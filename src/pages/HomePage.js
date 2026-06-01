@@ -105,6 +105,12 @@ function HomePage() {
     navigate("/recipes");
   };
 
+  const handleRemixClick = (selectedRecipe) => {
+    localStorage.setItem("activeRecipe", JSON.stringify(selectedRecipe));
+    localStorage.setItem("triggerRemixOnLoad", "true");
+    navigate("/recipes");
+  };
+
   return (
     <div
       style={{
@@ -341,9 +347,42 @@ function HomePage() {
                         <h3 style={{ fontSize: "1.05rem", margin: 0, fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {food.title}
                         </h3>
-                        <p style={{ fontSize: "0.8rem", margin: 0, color: "var(--text-secondary)" }}>
-                          ⏱️ Prep: {food.prepTime}
-                        </p>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                          <p style={{ fontSize: "0.8rem", margin: 0, color: "var(--text-secondary)" }}>
+                            ⏱️ Prep: {food.prepTime}
+                          </p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemixClick(food);
+                            }}
+                            style={{
+                              background: "rgba(244, 163, 25, 0.12)",
+                              border: "1px solid var(--accent-saffron)",
+                              color: "var(--text-primary)",
+                              padding: "4px 10px",
+                              borderRadius: "12px",
+                              fontSize: "0.75rem",
+                              fontWeight: "700",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              transition: "var(--transition-fast)",
+                              zIndex: 10
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.backgroundColor = "var(--accent-saffron)";
+                              e.target.style.color = "#FFFFFF";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.backgroundColor = "rgba(244, 163, 25, 0.12)";
+                              e.target.style.color = "var(--text-primary)";
+                            }}
+                          >
+                            🪄 Remix
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </ThreeDCard>
