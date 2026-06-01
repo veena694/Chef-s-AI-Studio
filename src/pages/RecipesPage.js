@@ -868,10 +868,50 @@ function RecipesPage() {
                   ))}
                 </div>
 
-                {/* Hands-free mode activator */}
-                <button className="btn-start-cooking" onClick={() => setCookingModeOpen(true)}>
-                  👨‍🍳 Start Hands-Free Cooking Mode
-                </button>
+                 {/* Active Recipe Action Controls */}
+                <div style={{ display: "flex", gap: "12px", marginTop: "var(--spacing-lg)", flexWrap: "wrap" }}>
+                  <button className="btn-start-cooking" onClick={() => setCookingModeOpen(true)} style={{ flex: 1, minWidth: "200px", margin: 0 }}>
+                    👨‍🍳 Start Hands-Free Cooking Mode
+                  </button>
+                  <button 
+                    onClick={toggleBookmark}
+                    style={{
+                      flex: 1,
+                      minWidth: "200px",
+                      backgroundColor: isCurrentRecipeBookmarked ? "rgba(193, 68, 14, 0.12)" : "var(--accent-saffron)",
+                      color: isCurrentRecipeBookmarked ? "var(--accent-terracotta)" : "#FFFFFF",
+                      border: isCurrentRecipeBookmarked ? "1px solid var(--accent-terracotta)" : "none",
+                      padding: "14px 24px",
+                      borderRadius: "8px",
+                      fontWeight: "700",
+                      fontSize: "1rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      transition: "var(--transition-smooth)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isCurrentRecipeBookmarked) {
+                        e.target.style.backgroundColor = "var(--accent-terracotta)";
+                        e.target.style.color = "var(--accent-white)";
+                      } else {
+                        e.target.style.backgroundColor = "rgba(193, 68, 14, 0.22)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isCurrentRecipeBookmarked) {
+                        e.target.style.backgroundColor = "var(--accent-saffron)";
+                        e.target.style.color = "#FFFFFF";
+                      } else {
+                        e.target.style.backgroundColor = "rgba(193, 68, 14, 0.12)";
+                      }
+                    }}
+                  >
+                    {isCurrentRecipeBookmarked ? "❤️ Saved in Cookbook" : "📖 Save to Cookbook"}
+                  </button>
+                </div>
               </div>
             </ThreeDCard>
           ) : (
