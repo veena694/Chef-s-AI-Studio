@@ -9,7 +9,7 @@ import Toast, { ToastContainer } from "../components/Toast";
 import { generateRecipe, analyzeFridgeImage } from "../utils/api";
 import "../styles/RecipesPage.css";
 
-// Pool of 5 premium Gourmet Chef Recommendations that rotate
+// Pool of 8 premium Gourmet Chef Recommendations that rotate
 const GOURMET_POOL = [
   {
     title: "Pan-Seared Salmon with Rosemary Lemon Butter",
@@ -132,6 +132,79 @@ const GOURMET_POOL = [
       "Spoon the fresh avocado caprese mixture generously onto each toasted baguette slice.",
       "Drizzle with sweet balsamic glaze right before serving and enjoy immediately."
     ]
+  },
+  {
+    title: "Crispy Honey Garlic Chicken Wings",
+    cuisine: "Asian Fusion",
+    prepTime: "15 mins",
+    cookTime: "25 mins",
+    image: "https://images.indianexpress.com/2024/03/processed-food.jpg",
+    ingredients: [
+      "2 lbs chicken wings, split",
+      "1/2 cup honey",
+      "4 cloves garlic, minced",
+      "2 tbsp soy sauce",
+      "1 tbsp apple cider vinegar",
+      "1/2 tsp ginger, grated",
+      "1 tbsp sesame seeds",
+      "1/4 cup cornstarch"
+    ],
+    steps: [
+      "Preheat oven to 420°F (215°C) and line a baking sheet with foil and a metal rack.",
+      "Toss chicken wings in cornstarch until lightly coated, shaking off excess.",
+      "Bake the wings for 25 minutes, flipping halfway through, until skin is extremely crispy and golden.",
+      "While baking, simmer honey, minced garlic, soy sauce, vinegar, and grated ginger in a small saucepan for 5 minutes until thickened.",
+      "Toss hot baked wings in the sticky honey garlic sauce until fully coated.",
+      "Transfer to a plate, sprinkle with sesame seeds, and serve hot."
+    ]
+  },
+  {
+    title: "Zesty Lemon Blueberry Oats Bowl",
+    cuisine: "Healthy Breakfast",
+    prepTime: "5 mins",
+    cookTime: "5 mins",
+    image: "https://fitandflex.in/cdn/shop/articles/istockphoto-1127563435-612x612_1445x.jpg?v=1720790357",
+    ingredients: [
+      "1 cup rolled oats",
+      "2 cups almond milk",
+      "1 cup fresh blueberries",
+      "1 whole lemon, zested and juiced",
+      "2 tbsp pure maple syrup",
+      "1 tbsp chia seeds",
+      "1/4 cup crushed almonds"
+    ],
+    steps: [
+      "In a small pot, combine rolled oats, almond milk, and chia seeds. Cook over medium heat, stirring occasionally, for 5 minutes.",
+      "Remove pot from heat and stir in the fresh lemon juice, lemon zest, and pure maple syrup.",
+      "Gently fold in half of the fresh blueberries, letting them burst slightly from the residual heat.",
+      "Transfer the warm oatmeal to a serving bowl.",
+      "Top with the remaining blueberries, crushed almonds, and a touch of extra lemon zest for a bright breakfast start."
+    ]
+  },
+  {
+    title: "Spicy Shrimp Tacos with Mango Salsa",
+    cuisine: "Mexican Fusion",
+    prepTime: "15 mins",
+    cookTime: "10 mins",
+    image: "https://cdn.georgeinstitute.org/sites/default/files/styles/width1920_fallback/public/2020-10/world-food-day-2020.png",
+    ingredients: [
+      "1 lb medium shrimp, peeled and deveined",
+      "1 tbsp chili powder",
+      "1 ripe mango, diced",
+      "1/2 cup red bell pepper, diced",
+      "1/4 cup fresh cilantro, chopped",
+      "1 whole lime, juiced",
+      "8 warm corn tortillas",
+      "1 tbsp olive oil"
+    ],
+    steps: [
+      "In a small bowl, prepare the fresh mango salsa by tossing the diced mango, red bell pepper, cilantro, and fresh lime juice together.",
+      "Season the peeled shrimp evenly with chili powder, salt, and pepper.",
+      "Heat olive oil in a skillet over medium-high heat. Sear the shrimp for 2 minutes on each side until pink and cooked through.",
+      "Warm the corn tortillas in a dry skillet for 30 seconds on each side.",
+      "Assemble tacos by placing 3-4 spicy seared shrimp inside each warm tortilla.",
+      "Top generously with the vibrant sweet mango salsa and serve with lime wedges."
+    ]
   }
 ];
 
@@ -162,9 +235,17 @@ function RecipesPage() {
     const saved = JSON.parse(localStorage.getItem("savedRecipes")) || [];
     setSavedRecipes(saved);
 
-    // Shuffle and pick exactly 3 Daily specials on mount so it's fresh every time
-    const shuffled = [...GOURMET_POOL].sort(() => 0.5 - Math.random());
-    setSuggestedRecipes(shuffled.slice(0, 3));
+    // Math-stables uniform shuffling (Fisher-Yates Shuffle Algorithm)
+    const shuffleSpecs = () => {
+      const poolCopy = [...GOURMET_POOL];
+      for (let i = poolCopy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
+      }
+      return poolCopy.slice(0, 3);
+    };
+
+    setSuggestedRecipes(shuffleSpecs());
   }, []);
 
   // Toast Helper
@@ -781,10 +862,10 @@ function RecipesPage() {
         </div>
       </div>
 
-      {/* Today's Special Suggestions - Shuffles on Mount & Click to Cook Instantly */}
+      {/* Suggested Daily Specials - Shuffles on Mount & Click to Cook Instantly */}
       <div style={{ marginTop: "var(--spacing-xl)", borderTop: "1px solid var(--border-color)", paddingTop: "var(--spacing-xl)" }}>
         <h3 style={{ fontFamily: "var(--font-title)", fontSize: "1.8rem", textAlign: "center", marginBottom: "6px" }}>
-          👨‍🍳 Chef's Today's Specials
+          👨‍🍳 Lovely suggestions for you
         </h3>
         <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "var(--spacing-lg)" }}>
           Fresh premium recommendations that rotate every time you open the studio. Click card to cook instantly!
