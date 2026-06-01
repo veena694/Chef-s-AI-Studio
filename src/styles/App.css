@@ -201,60 +201,85 @@ p {
 /* Floating 3D Food Figure elements */
 .floating-3d-figure {
   position: fixed;
-  font-size: 3rem;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.2rem;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.12;
-  filter: drop-shadow(0 15px 15px rgba(0, 0, 0, 0.08));
+  opacity: 0.55;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  box-shadow: 
+    0 15px 35px rgba(42, 32, 21, 0.08), 
+    inset 0 4px 8px rgba(255, 255, 255, 0.65), 
+    inset 0 -4px 8px rgba(0, 0, 0, 0.04);
   transform-style: preserve-3d;
   perspective: 1000px;
+  transition: var(--transition-smooth);
+}
+
+/* Adjust colors in dark mode for better contrast */
+[data-theme='dark'] .floating-3d-figure {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.3), 
+    inset 0 4px 8px rgba(255, 255, 255, 0.15), 
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+  opacity: 0.4;
 }
 
 .fig-1 {
   top: 15%;
   left: 8%;
-  animation: float-fig-1 12s infinite ease-in-out;
+  animation: float-fig-1 14s infinite ease-in-out;
 }
 
 .fig-2 {
   top: 65%;
   left: 5%;
-  animation: float-fig-2 15s infinite ease-in-out;
+  animation: float-fig-2 18s infinite ease-in-out;
 }
 
 .fig-3 {
   top: 25%;
   right: 8%;
-  animation: float-fig-3 14s infinite ease-in-out;
+  animation: float-fig-3 16s infinite ease-in-out;
 }
 
 .fig-4 {
   top: 75%;
   right: 6%;
-  animation: float-fig-4 16s infinite ease-in-out;
+  animation: float-fig-4 20s infinite ease-in-out;
 }
 
 @keyframes float-fig-1 {
   0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
-  50% { transform: translateY(-25px) rotateX(15deg) rotateY(25deg) rotateZ(10deg) scale(1.1); }
+  50% { transform: translateY(-40px) rotateX(45deg) rotateY(60deg) rotateZ(15deg) scale(1.15); }
   100% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
 }
 
 @keyframes float-fig-2 {
   0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
-  50% { transform: translateY(30px) rotateX(-20deg) rotateY(15deg) rotateZ(-15deg) scale(0.9); }
+  50% { transform: translateY(50px) rotateX(-50deg) rotateY(40deg) rotateZ(-25deg) scale(0.9); }
   100% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
 }
 
 @keyframes float-fig-3 {
   0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
-  50% { transform: translateY(-20px) rotateX(25deg) rotateY(-20deg) rotateZ(20deg) scale(1.05); }
+  50% { transform: translateY(-35px) rotateX(60deg) rotateY(-45deg) rotateZ(35deg) scale(1.1); }
   100% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
 }
 
 @keyframes float-fig-4 {
   0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
-  50% { transform: translateY(-30px) rotateX(-15deg) rotateY(-15deg) rotateZ(-10deg) scale(1.15); }
+  50% { transform: translateY(-50px) rotateX(-45deg) rotateY(-50deg) rotateZ(-20deg) scale(1.2); }
   100% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1); }
 }
 
