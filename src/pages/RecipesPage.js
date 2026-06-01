@@ -245,8 +245,13 @@ function RecipesPage() {
   const [cookingModeOpen, setCookingModeOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
 
+  // Camera integration states
+  const [isCameraActive, setIsCameraActive] = useState(false);
+
   const fileInputRef = useRef(null);
   const recipeOutputRef = useRef(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
 
   // Load Saved Recipes, Local Settings, & Shuffled Specials
   useEffect(() => {
@@ -302,6 +307,68 @@ function RecipesPage() {
 
     loadSuggestions();
   }, []);
+
+  // Camera support teardown and integration methods
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, // Prefer rear camera on mobile
+        audio: false,
+      });
+      streamRef.current = stream;
+      setIsCameraActive(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+      addToast("Live camera active!", "info");
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      addToast("Failed to access camera. Please check permissions.", "error");
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const captureSnapshot = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const dataUrl = canvas.toDataURL("image/jpeg");
+      setImagePreview(dataUrl);
+      
+      const mimeType = "image/jpeg";
+      scanFridgeImage(dataUrl, mimeType);
+      
+      stopCamera();
+      addToast("Captured photo successfully!", "success");
+    } catch (err) {
+      console.error("Failed to capture snapshot:", err);
+      addToast("Failed to capture snapshot", "error");
+    }
+  };
 
   // Toast Helper
   const addToast = (message, type = "success") => {
@@ -691,44 +758,126 @@ function RecipesPage() {
               Upload or drop a picture of your pantry. Our AI chef will visually identify all ingredients!
             </p>
 
-            <div
-              className={`scanner-dashed-area ${dragActive ? "dragging" : ""}`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={triggerFileSelect}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => handleImageFile(e.target.files[0])}
-              />
+            {isCameraActive ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%", marginBottom: "var(--spacing-md)" }}>
+                <div style={{ position: "relative", width: "100%", height: "200px", borderRadius: "var(--border-radius-sm)", overflow: "hidden", border: "2px solid var(--accent-saffron)", boxShadow: "var(--shadow-2)", backgroundColor: "#000" }}>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                  />
+                  <div style={{ position: "absolute", inset: 0, border: "2px solid rgba(255,255,255,0.25)", pointerEvents: "none" }} />
+                </div>
+                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <button 
+                    onClick={captureSnapshot} 
+                    style={{ 
+                      flex: 2, 
+                      backgroundColor: "var(--accent-rosemary)", 
+                      color: "#FFFFFF", 
+                      border: "none", 
+                      padding: "12px 16px", 
+                      borderRadius: "var(--border-radius-sm)", 
+                      fontWeight: "700", 
+                      cursor: "pointer", 
+                      transition: "var(--transition-fast)" 
+                    }}
+                    onMouseEnter={(e) => e.target.style.filter = "brightness(1.15)"}
+                    onMouseLeave={(e) => e.target.style.filter = "none"}
+                  >
+                    📸 Capture Photo
+                  </button>
+                  <button 
+                    onClick={stopCamera} 
+                    style={{ 
+                      flex: 1, 
+                      backgroundColor: "rgba(255,255,255,0.1)", 
+                      color: "var(--text-primary)", 
+                      border: "1px solid var(--border-color)", 
+                      padding: "12px 16px", 
+                      borderRadius: "var(--border-radius-sm)", 
+                      fontWeight: "600", 
+                      cursor: "pointer", 
+                      transition: "var(--transition-fast)" 
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.1)"}
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div
+                  className={`scanner-dashed-area ${dragActive ? "dragging" : ""}`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={triggerFileSelect}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => handleImageFile(e.target.files[0])}
+                  />
 
-              {imageScanning ? (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
-                  <div className="shimmer-skeleton" style={{ width: "60px", height: "60px", borderRadius: "50%" }} />
-                  <p style={{ fontWeight: 600, color: "var(--accent-saffron)" }}>Scanning Fridge Items...</p>
+                  {imageScanning ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                      <div className="shimmer-skeleton" style={{ width: "60px", height: "60px", borderRadius: "50%" }} />
+                      <p style={{ fontWeight: 600, color: "var(--accent-saffron)" }}>Scanning Fridge Items...</p>
+                    </div>
+                  ) : imagePreview ? (
+                    <div className="scanner-thumbnail-container">
+                      <img src={imagePreview} alt="Fridge scan preview" className="scanner-thumbnail" />
+                      <p style={{ fontSize: "0.85rem", fontWeight: "600" }}>Tap to upload another photo</p>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="scanner-icon">📷</span>
+                      <p style={{ fontWeight: "600", fontSize: "0.95rem", margin: "4px 0" }}>
+                        Drag & Drop image here
+                      </p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                        Supports JPG, PNG, WEBP (Max 5MB)
+                      </p>
+                    </>
+                  )}
                 </div>
-              ) : imagePreview ? (
-                <div className="scanner-thumbnail-container">
-                  <img src={imagePreview} alt="Fridge scan preview" className="scanner-thumbnail" />
-                  <p style={{ fontSize: "0.85rem", fontWeight: "600" }}>Tap to upload another photo</p>
-                </div>
-              ) : (
-                <>
-                  <span className="scanner-icon">📷</span>
-                  <p style={{ fontWeight: "600", fontSize: "0.95rem", margin: "4px 0" }}>
-                    Drag & Drop image here
-                  </p>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                    Supports JPG, PNG, WEBP (Max 5MB)
-                  </p>
-                </>
-              )}
-            </div>
+
+                {!imageScanning && (
+                  <button
+                    onClick={startCamera}
+                    style={{
+                      width: "100%",
+                      backgroundColor: "rgba(244, 163, 25, 0.12)",
+                      border: "1px solid var(--accent-saffron)",
+                      color: "var(--text-primary)",
+                      padding: "10px 16px",
+                      borderRadius: "var(--border-radius-sm)",
+                      fontWeight: "600",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      transition: "var(--transition-fast)",
+                      marginTop: "-8px",
+                      marginBottom: "4px",
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(244, 163, 25, 0.2)"}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(244, 163, 25, 0.12)"}
+                  >
+                    📸 Open Live Camera Scanner
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           <div className="studio-card">
