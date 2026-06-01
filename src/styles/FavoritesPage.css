@@ -40,8 +40,10 @@
 
 /* Premium Cookbook Card */
 .cookbook-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-lg);
   display: flex;
@@ -50,6 +52,12 @@
   gap: var(--spacing-md);
   box-shadow: var(--shadow-2);
   transition: var(--transition-smooth);
+}
+
+.cookbook-card:hover {
+  border-color: rgba(244, 163, 25, 0.35);
+  box-shadow: 0 25px 50px rgba(193, 68, 14, 0.12);
+  transform: translateY(-2px);
 }
 
 .cookbook-card-header {

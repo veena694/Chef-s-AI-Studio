@@ -56,12 +56,20 @@
 
 /* Ingredient Tag Input Box */
 .studio-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-lg);
-  boxShadow: var(--shadow-2);
+  box-shadow: var(--shadow-2);
   transition: var(--transition-smooth);
+}
+
+.studio-card:hover {
+  border-color: rgba(244, 163, 25, 0.35);
+  box-shadow: 0 20px 40px rgba(193, 68, 14, 0.1);
+  transform: translateY(-2px);
 }
 
 .studio-card h3 {
@@ -506,11 +514,22 @@
   justify-content: center;
   text-align: center;
   height: 100%;
-  min-height: 300px;
-  border: 2px dashed var(--border-color);
+  min-height: 380px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--border-radius-lg);
   padding: var(--spacing-xl);
   color: var(--text-secondary);
+  box-shadow: var(--shadow-2);
+  transition: var(--transition-smooth);
+}
+
+.empty-recipe-placeholder:hover {
+  border-color: rgba(244, 163, 25, 0.35);
+  box-shadow: 0 25px 50px rgba(193, 68, 14, 0.12);
+  transform: translateY(-2px);
 }
 
 .placeholder-chef-hat {
