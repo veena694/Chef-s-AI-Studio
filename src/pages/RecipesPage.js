@@ -219,6 +219,24 @@ function RecipesPage() {
   const [currentServings, setCurrentServings] = useState(4);
   const [savedRecipes, setSavedRecipes] = useState([]);
   const [suggestedRecipes, setSuggestedRecipes] = useState([]);
+  const [loadingMoreSuggestions, setLoadingMoreSuggestions] = useState(false);
+
+  const handleLoadMoreSuggestions = async () => {
+    setLoadingMoreSuggestions(true);
+    const liveSuggestions = await fetchSpoonacularSuggestions(3);
+    if (liveSuggestions && liveSuggestions.length > 0) {
+      setSuggestedRecipes((prev) => [...prev, ...liveSuggestions]);
+    } else {
+      // Uniform shuffled fallback
+      const poolCopy = [...GOURMET_POOL];
+      for (let i = poolCopy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
+      }
+      setSuggestedRecipes((prev) => [...prev, ...poolCopy.slice(0, 3)]);
+    }
+    setLoadingMoreSuggestions(false);
+  };
 
   // UI Interactive States
   const [dragActive, setDragActive] = useState(false);
@@ -917,6 +935,44 @@ function RecipesPage() {
               </div>
             </ThreeDCard>
           ))}
+
+          {/* Suggested Specials Shimmer skeletons */}
+          {loadingMoreSuggestions && (
+            [1, 2, 3].map((n) => (
+              <div
+                key={"more-sug-" + n}
+                className="shimmer-skeleton"
+                style={{
+                  height: "260px",
+                  borderRadius: "var(--border-radius-md)",
+                  border: "1px solid var(--border-color)",
+                }}
+              />
+            ))
+          )}
+        </div>
+
+        {/* View More Suggestions Button */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--spacing-md)", marginBottom: "var(--spacing-xl)" }}>
+          <button
+            onClick={handleLoadMoreSuggestions}
+            disabled={loadingMoreSuggestions}
+            style={{
+              backgroundColor: "rgba(244, 163, 25, 0.15)",
+              border: "1px solid var(--accent-saffron)",
+              color: "var(--text-primary)",
+              padding: "12px 28px",
+              fontSize: "1rem",
+              fontWeight: "600",
+              borderRadius: "30px",
+              cursor: "pointer",
+              transition: "var(--transition-fast)",
+            }}
+            onMouseEnter={(e) => (e.target.style.backgroundColor = "rgba(244, 163, 25, 0.25)")}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = "rgba(244, 163, 25, 0.15)")}
+          >
+            {loadingMoreSuggestions ? "🔄 Loading More Suggestions..." : "🔄 View More Suggestions"}
+          </button>
         </div>
       </div>
 
