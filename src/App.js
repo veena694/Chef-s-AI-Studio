@@ -3,23 +3,23 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import HomePage from "./pages/HomePage";
 import RecipesPage from "./pages/RecipesPage";
-import SearchResultsPage from "./pages/SearchResultsPage";
-import RecipeDetailsPage from "./pages/RecipeDetailsPage";
-import FavoritesPage from "./pages/FavoritesPage"; 
+import FavoritesPage from "./pages/FavoritesPage";
 import "./styles/App.css";
 
-
+/**
+ * App - Primary Router of Chef's AI Studio.
+ * Integrates three primary gourmet sections:
+ * 1. Landing Welcome Studio (/)
+ * 2. Active AI Chef's Workshop (/recipes)
+ * 3. Bookmarked Recipe Archive Cookbook (/favorites)
+ */
 function App() {
-  
   return (
     <Router>
       <div className="App">
-        
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/recipes" element={<RecipesPage />} />
-          <Route path="/search-results" element={<SearchResultsPage />} />
-          <Route path="/recipe-details/:id" element={<RecipeDetailsPage />} /> 
           <Route path="/favorites" element={<FavoritesPage />} />
         </Routes>
       </div>
