@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Environment Variables
-const SPOONACULAR_URL = process.env.REACT_APP_API_URL || "https://api.spoonacular.com/recipes/findByIngredients";
+// Base Environment Variables
+const SPOONACULAR_BASE = process.env.REACT_APP_API_URL || "https://api.spoonacular.com/recipes";
 const API_KEY = process.env.REACT_APP_API_KEY || "8947aeb90a7448dcabd53a297bdb21b0";
 
 // Claude Configurations (falls back if a separate Claude key is provided in Vercel)
@@ -42,12 +42,14 @@ function parseClaudeJSON(responseText) {
 }
 
 /**
- * 1. USE OF REACT_APP_API_KEY & REACT_APP_API_URL:
+ * 1. USE OF REACT_APP_API_URL & REACT_APP_API_KEY:
  * Fetches matching base recipe from Spoonacular using ingredients.
+ * Dynamically appends "/findByIngredients" and "/{id}/information" to your base URL!
  */
 export const getRecipesByIngredients = async (ingredients) => {
   try {
-    const response = await axios.get(SPOONACULAR_URL, {
+    const findByIngredientsUrl = `${SPOONACULAR_BASE}/findByIngredients`;
+    const response = await axios.get(findByIngredientsUrl, {
       params: {
         ingredients: ingredients.join(","),
         apiKey: API_KEY,
@@ -58,9 +60,9 @@ export const getRecipesByIngredients = async (ingredients) => {
     if (response.data && response.data[0]) {
       const bestMatch = response.data[0];
       
-      // Fetch full details (instructions, ready minutes) using Spoonacular ID
+      // Fetch full details using dynamic ID information endpoint
       const detailsResponse = await axios.get(
-        `https://api.spoonacular.com/recipes/${bestMatch.id}/information`,
+        `${SPOONACULAR_BASE}/${bestMatch.id}/information`,
         {
           params: {
             apiKey: API_KEY,
@@ -72,8 +74,8 @@ export const getRecipesByIngredients = async (ingredients) => {
       return {
         title: recipeData.title,
         cuisine: recipeData.cuisines?.[0] || "Fusion",
-        prepTime: `${Math.round(recipeData.readyInMinutes * 0.3)} mins`,
-        cookTime: `${Math.round(recipeData.readyInMinutes * 0.7)} mins`,
+        prepTime: `${Math.max(5, Math.round(recipeData.readyInMinutes * 0.3))} mins`,
+        cookTime: `${Math.max(5, Math.round(recipeData.readyInMinutes * 0.7))} mins`,
         ingredients: recipeData.extendedIngredients.map((i) => i.original),
         steps: recipeData.analyzedInstructions?.[0]?.steps.map((s) => s.step) || 
                (recipeData.instructions ? [recipeData.instructions] : ["Follow standard cooking instructions."]),
@@ -87,12 +89,14 @@ export const getRecipesByIngredients = async (ingredients) => {
 };
 
 /**
- * 2. USE OF REACT_APP_API_KEY:
- * Fetches 3 dynamic suggested specials directly from Spoonacular on mount.
+ * 2. USE OF REACT_APP_API_URL & REACT_APP_API_KEY:
+ * Fetches 3 dynamic, totally fresh suggested specials directly from Spoonacular on mount.
+ * Dynamically appends "/random" to your base URL!
  */
 export const fetchSpoonacularSuggestions = async () => {
   try {
-    const response = await axios.get("https://api.spoonacular.com/recipes/random", {
+    const randomUrl = `${SPOONACULAR_BASE}/random`;
+    const response = await axios.get(randomUrl, {
       params: {
         number: 3,
         apiKey: API_KEY,
