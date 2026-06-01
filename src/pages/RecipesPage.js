@@ -253,6 +253,36 @@ function RecipesPage() {
     const saved = JSON.parse(localStorage.getItem("savedRecipes")) || [];
     setSavedRecipes(saved);
 
+    // Check for an active recipe selected from the homepage recommendations
+    const activeFromHome = localStorage.getItem("activeRecipe");
+    if (activeFromHome) {
+      try {
+        const parsed = JSON.parse(activeFromHome);
+        setRecipe(parsed);
+        setCurrentServings(4);
+        
+        // Premium celebration confetti burst
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.65 },
+          colors: ["#F4A319", "#C1440E", "#3B6B35", "#FFFFFF"],
+        });
+
+        // Smoothly scroll the generated card into view after rendering
+        setTimeout(() => {
+          if (recipeOutputRef.current) {
+            recipeOutputRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 300);
+
+        // Remove it from cache so page refreshes don't re-trigger confetti
+        localStorage.removeItem("activeRecipe");
+      } catch (err) {
+        console.error("Failed to parse activeRecipe from localStorage:", err);
+      }
+    }
+
     const loadSuggestions = async () => {
       // 1. Try to fetch live suggestions from Spoonacular API
       const liveSuggestions = await fetchSpoonacularSuggestions();
